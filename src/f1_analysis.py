@@ -3,10 +3,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import seaborn as sns
 from pathlib import Path
-import warnings
 
-# Отключаем предупреждения
-warnings.filterwarnings('ignore')
 
 # Настройка стилей и шрифтов
 plt.style.use('seaborn-v0_8')
@@ -72,24 +69,24 @@ def prepare_data(dfs):
     }
 
 def analyze_top_drivers(results, save_path='visualizations'):
-    """Анализ топ-50 гонщиков по победам и их очки"""
-    print("\n1. Анализ топ-50 гонщиков по победам")
+    """Анализ топ-5 гонщиков по победам и их очки"""
+    print("\n1. Анализ топ-5 гонщиков по победам")
     
     # Находим гонщиков с наибольшим количеством побед
     wins_by_driver = results[results['position'] == '1'].groupby(
         ['driverId', 'driverRef', 'forename', 'surname']
     ).size().sort_values(ascending=False).reset_index(name='wins')
     
-    top_50_drivers = wins_by_driver.head(50)
+    top_50_drivers = wins_by_driver.head(5)
     print(f"Топ-5 гонщиков по количеству побед:")
-    for i, (_, row) in enumerate(top_50_drivers.head().iterrows(), 1):
+    for i, (_, row) in enumerate(top_5_drivers.head().iterrows(), 1):
         print(f"{i}. {row['forename']} {row['surname']}: {row['wins']} побед")
     
     # Фильтруем данные с 1980 года
     results_since_1980 = results[results['year'] >= 1980]
     
     # Получаем данные по очкам для этих гонщиков по годам
-    top_drivers_id = top_50_drivers['driverId'].tolist()
+    top_drivers_id = top_5_drivers['driverId'].tolist()
     points_by_year = results_since_1980[results_since_1980['driverId'].isin(top_drivers_id)].groupby(
         ['driverId', 'driverRef', 'year']
     )['points'].sum().reset_index()
@@ -105,7 +102,7 @@ def analyze_top_drivers(results, save_path='visualizations'):
     points_by_year = points_by_year.merge(driver_names[['driverId', 'fullname']], on='driverId')
     
     # Создаем тепловую карту для топ-5 гонщиков
-    top_5_drivers_id = top_50_drivers.head(5)['driverId'].tolist()
+    top_5_drivers_id = top_5_drivers.head(5)['driverId'].tolist()
     points_for_heatmap = points_by_year[points_by_year['driverId'].isin(top_5_drivers_id)]
     
     # Создаем тепловую карту очков по годам для топ-5 гонщиков
@@ -118,7 +115,7 @@ def analyze_top_drivers(results, save_path='visualizations'):
     ).fillna(0)
     
     # Сортируем гонщиков по количеству побед
-    sorted_drivers = top_50_drivers[top_50_drivers['driverId'].isin(top_5_drivers_id)].merge(
+    sorted_drivers = top_5_drivers[top_5_drivers['driverId'].isin(top_5_drivers_id)].merge(
         driver_names[['driverId', 'fullname']], on='driverId'
     ).sort_values('wins', ascending=False)['fullname'].tolist()
     
@@ -467,38 +464,6 @@ def analyze_speed_evolution(results, save_path='visualizations'):
     
     print(f"Визуализации сохранены в каталоге {save_path}")
 
-def analyze_pit_stops_strategy(results, pit_stops, save_path='visualizations'):
-    """Анализ стратегии пит-стопов на разных трассах"""
-    print("\n5. Анализ тактики и стратегии пит-стопов")
-    
-    # Объединяем данные о пит-стопах с результатами гонок
-    pit_data = pit_stops.merge(results[['raceId', 'driverId', 'position', 'name', 'circuitId', 'year']], 
-                              on=['raceId', 'driverId'])
-    
-    # Считаем количество пит-стопов для каждого пилота в каждой гонке
-    pit_counts = pit_data.groupby(['raceId', 'driverId', 'position', 'name', 'circuitId', 'year']).size().reset_index(name='pit_count')
-    
-    # Преобразуем позицию в число
-    pit_counts['position'] = pd.to_numeric(pit_counts['position'], errors='coerce')
-    
-    # Фильтруем данные для победителей (позиция 1)
-    winners_pit_counts = pit_counts[pit_counts['position'] == 1].copy()
-    
-    # Фильтруем данные начиная с 1990 года
-    winners_pit_counts = winners_pit_counts[winners_pit_counts['year'] >= 1990]
-    
-    # Определяем оптимальные стратегии для каждой трассы
-    optimal_strategies = winners_pit_counts.groupby('name')['pit_count'].agg(
-        ['mean', 'median', 'min', 'max', 'count']
-    ).reset_index()
-    
-    optimal_strategies = optimal_strategies[optimal_strategies['count'] >= 5]  # Минимум 5 гонок для статистики
-    optimal_strategies = optimal_strategies.sort_values('mean')
-    
-    print("Оптимальные стратегии пит-стопов по трассам (топ-5):")
-    for i, (_, row) in enumerate(optimal_strategies.head().iterrows(), 1):
-        print(f"{i}. {row['name']}: в среднем {row['mean']:.1f} пит-стопов, минимум {row['min']}, максимум {row['max']}")
-    
 
 def main():
     # Загружаем данные
@@ -515,12 +480,7 @@ def main():
     # Подготавливаем данные
     prepared_data = prepare_data(dfs)
     
-    # Выполняем все типы анализа
-    analyze_top_drivers(prepared_data['results'])
-    analyze_starting_position(prepared_data['results_with_quali'])
-    analyze_dangerous_circuits(prepared_data['results_with_status'])
-    analyze_speed_evolution(prepared_data['results'])
-    analyze_pit_stops_strategy(prepared_data['results'], dfs['pit_stops'])
+  
     
     print("\nАнализ завершен! Все визуализации сохранены в каталоге 'visualizations'")
 
